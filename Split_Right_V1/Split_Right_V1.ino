@@ -17,12 +17,14 @@
 #define columns 6
 
 //Function declaration
+void txBLE();
+void keyScan();
 void pinSetup();
 
 //Global Variable declaration
 NimBLECharacteristic *pSecureCharacteristic = NULL;
 uint8_t columnPins[] = { 12, 14, 27, 26, 25, 33 };
-uint8_t rowPins[] = { 22, 19, 23, 18, 5 };
+uint8_t rowPins[] = { 19, 23, 18, 5, 17 };
 int keytxData = 0;
 
 void setup() {
@@ -48,17 +50,8 @@ void setup() {
 }
 
 void loop() {
-  // for (int i = 0; i < 5; i++) {
-  //   pSecureCharacteristic->setValue(i);
-  //   pSecureCharacteristic->notify();
-  //   //Serial.println((unsigned int)&i,HEX);
-  //   delay(1000);
-  // }
-  int test = 0;
-  test = 1 << 2 | test;
-  test = test | 1 << 1;
-  Serial.println(test);
-  delay(1000);
+  keyScan();
+  txBLE();
 }
 //Transmit the new keys being pressed or not pressed via BLE
 void txBLE() {
@@ -71,10 +64,10 @@ void keyScan() {
     uint8_t curColPin = columnPins[i];
     digitalWrite(curColPin, LOW);
     for (uint8_t j = 0; j < rows; j++) {
-      if (digitalRead(rowPins[j])) {
-        keytxData = keytxData | 1 << (j * 5 + i);
+      if (digitalRead(rowPins[j]) == LOW) {
+        keytxData = keytxData | 1 << (j * 6 + i);
       } else {
-        keytxData = keytxData | 0 << (j * 5 + i);
+        keytxData = keytxData & (~(1 << (j * 6 + i)));
       }
     }
     digitalWrite(curColPin, HIGH);
@@ -84,6 +77,7 @@ void keyScan() {
 void pinSetup() {
   for (uint8_t i = 0; i < columns; i++) {
     pinMode(columnPins[i], OUTPUT);
+    digitalWrite(columnPins[i], HIGH);
   }
   for (uint8_t j = 0; j < rows; j++) {
     pinMode(rowPins[j], INPUT_PULLUP);

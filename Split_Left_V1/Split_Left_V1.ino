@@ -63,7 +63,7 @@ void loop() {
   }
   if (pCharacteristic->canRead()) {
     int value = pCharacteristic->readValue<int>();
-    Serial.println(value);
+    Serial.println(value, BIN);
     // if (bleKeyboard.isConnected()) {
     //   bleKeyboard.println(value);
     // }
