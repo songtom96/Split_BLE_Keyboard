@@ -1,9 +1,21 @@
+/** Split_BLE_Keyboard
+*
+* Split wireless keyboard that uses two ESP32 with batteries. 
+* Left keyboard acts as the master and the Right keyboard acts as the server, meaning only the left keyboard connects to the PC.
+*
+*   Created on Sept 16 2023
+*       Author: Thomas Song
+*/
+
+//#include <Arduino.h>
 #include <NimBLEDevice.h>
 #include <BleKeyboard.h>
 
 #define deviceName "ESP32Client"
 #define serviceID "TOMM"
 #define charUuid "ACUL"
+#define rows 5
+#define columns 6
 
 NimBLEUUID serviceUuid(serviceID);    //Set Service UUID 
 NimBLEClient *pClient = NULL;   //Create Global pClient
@@ -61,13 +73,12 @@ void loop() {
 
 void scanBLE() {
   NimBLEScan *pScan = NimBLEDevice::getScan();
-  NimBLEScanResults results = pScan->start(5);
-  for (uint8_t i = 0; i < results.getCount(); i++) {
+  NimBLEScanResults results = pScan->start(5);    //scan for BLE devices for specified duration
+  for (uint8_t i = 0; i < results.getCount(); i++) {    //check all returned BLE device to see if they are the Right keyboard
     NimBLEAdvertisedDevice device = results.getDevice(i);
     if (device.isAdvertisingService(serviceUuid)) {
       pClient = NimBLEDevice::createClient();
       pClient->setClientCallbacks(&clientCB, false);
-      //pClient->setClientCallbacks(&clientCB, false);
       if (pClient->connect(&device)) {
         pService = pClient->getService(serviceUuid);
         if (pService != nullptr) {
