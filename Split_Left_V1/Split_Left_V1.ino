@@ -16,16 +16,33 @@
 #define charUuid "ACUL"
 #define rows 5
 #define columns 6
+#define numKeysPerSide rows *columns
 
-NimBLEUUID serviceUuid(serviceID);    //Set Service UUID 
-NimBLEClient *pClient = NULL;   //Create Global pClient
-NimBLERemoteService *pService = NULL;   //Create Global pService. Not really necessary so you could put this in the scanBLE().
-NimBLERemoteCharacteristic *pCharacteristic = NULL;   //Create Global pCharacteristic to readValue(). The only one that really needs to be Global
-bool isConnected = false;   //Checks if the Right Keyboard was connected
+NimBLEUUID serviceUuid(serviceID);                   //Set Service UUID
+NimBLEClient *pClient = NULL;                        //Create Global pClient
+NimBLERemoteService *pService = NULL;                //Create Global pService. Not really necessary so you could put this in the scanBLE().
+NimBLERemoteCharacteristic *pCharacteristic = NULL;  //Create Global pCharacteristic to readValue(). The only one that really needs to be Global
+bool isConnected = false;                            //Checks if the Right Keyboard was connected
+bool keyInput[numKeysPerSide * 2];
+int keyMap[] = {
+  '~', '1', '2', '3', '4', '5',  //Left Keyboard
+  KEY_TAB, 'q', 'w', 'e', 'r', 't',
+  KEY_LEFT_SHIFT, 'a', 's', 'd', 'f', 'g',
+  KEY_LEFT_CTRL, 'z', 'x', 'c', 'v', 'b',
+  KEY_LEFT_ALT, KEY_CAPS_LOCK, KEY_DELETE, '{', ' ', 'A',
+
+
+  '6', '7', '8', '9', '0', KEY_BACKSPACE,
+  'y', 'u', 'i', 'o', 'p', ';',
+  'h', 'j', 'k', 'l', '\'', KEY_RETURN,
+  'n', 'm', ',', '.', '/', KEY_DELETE,
+  ' ', '}', KEY_RIGHT_ALT, KEY_RIGHT_CTRL, KEY_RIGHT_SHIFT, 'A'
+};
 
 BleKeyboard bleKeyboard;
 
 void scanBLE();
+void rxParse();
 
 class ClientCallbacks : public NimBLEClientCallbacks {
   void onConnect(NimBLEClient *pClient) {
@@ -58,23 +75,18 @@ void setup() {
 
 void loop() {
   while (isConnected == false) {
+    bleKeyboard.releaseAll();
     Serial.println("Scanning for new devices...");
     scanBLE();
   }
-  if (pCharacteristic->canRead()) {
-    int value = pCharacteristic->readValue<int>();
-    Serial.println(value, BIN);
-    // if (bleKeyboard.isConnected()) {
-    //   bleKeyboard.println(value);
-    // }
-  }
+  rxParse();
   delay(1000);
 }
 
 void scanBLE() {
   NimBLEScan *pScan = NimBLEDevice::getScan();
-  NimBLEScanResults results = pScan->start(5);    //scan for BLE devices for specified duration
-  for (uint8_t i = 0; i < results.getCount(); i++) {    //check all returned BLE device to see if they are the Right keyboard
+  NimBLEScanResults results = pScan->start(5);        //scan for BLE devices for specified duration
+  for (uint8_t i = 0; i < results.getCount(); i++) {  //check all returned BLE device to see if they are the Right keyboard
     NimBLEAdvertisedDevice device = results.getDevice(i);
     if (device.isAdvertisingService(serviceUuid)) {
       pClient = NimBLEDevice::createClient();
@@ -92,9 +104,26 @@ void scanBLE() {
   }
 }
 
-void txParse() {
+void rxParse() {
   int value;
   if (pCharacteristic->canRead()) {
     value = pCharacteristic->readValue<int>();
+  }
+  for (uint8_t i = 0; i < numKeysPerSide; i++) {
+    if (value & 1 << i != 0) {
+      keyInput[numKeysPerSide + i] = true;
+    } else {
+      keyInput[numKeysPerSide + i] = false;
+    }
+  }
+}
+
+void txKeyInput() {
+  for(uint8_t i = 0; i < numKeysPerSide * 2; i++){
+    if(keyInput[i] == true){
+      bleKeyboard.press(keyMap[i]);
+    }else{
+      bleKeyboard.release(keyMap[i]);
+    }
   }
 }
